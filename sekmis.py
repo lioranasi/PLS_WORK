@@ -2,16 +2,18 @@
 import numpy as np 
 import cv2
 from operator import itemgetter
+import math
 #from matplotlib import pyplot as plt
+
 
 def nothing(x):
     pass
 
-def calculate_heights(bob, contours): #konturler arasi mesafe
+def calculate_heights(bob, contours): #konturler arasi mesafe PİXEL VALUE VERİYO
     if len(contours) == 4:
         b = [] #kontur noktalarinin 4unu attigimiz array
         if bob == 0: #sagdaki ve soldaki kenar uzunluklarini bulmak icin
-            for point in contours: #conturlerdeki dor
+            for point in contours: #conturlerdeki
                 b.append(point[0])
             b.sort(key=lambda x: x[0])
             upper = b[2:4]
@@ -37,20 +39,23 @@ def calculate_heights(bob, contours): #konturler arasi mesafe
         #raise ValueError('len of contours is not 4')
         print("fok mutlu")
 
-def calculate_distance(focal, px, width):
+def calculate_distance(focal, px, width, resize):
 
-    distance = (focal * width* 10)/ px
+    distance = (focal * width* 10)/ (px*resize)
     return(distance)
 
 
-focal_length = 35
-width = 29.5
+focal_length = 14.5
+width = 25.5
 
 
 
 cv2.namedWindow('settings')
 ##camera = PiCamera()
 cap = cv2.VideoCapture(0)
+cap.set(3, 640)
+cap.set(4, 480)
+
 ##time.sleep(0.1)
 
 lowH = 68
@@ -58,10 +63,10 @@ lowS = 40
 lowV = 40
 upH = 103
 upS = 255
-upV = 215
+upV = 255
 
 
-debug = False
+debug = True
 
 if debug:
     cv2.createTrackbar('lower_H','settings',0,180,nothing)
@@ -85,7 +90,7 @@ if debug:
 while (cap.isOpened()):
 
     _, frame = cap.read()
-    frame = cv2.resize(frame, (0,0), fx=0.2, fy=0.2) 
+##    frame = cv2.resize(frame, (0,0), fx=0.2, fy=0.2) 
 ##    img = cv2.medianBlur(frame,5)
 
     if debug:
@@ -98,6 +103,7 @@ while (cap.isOpened()):
 
 
 
+      
 
     lowerHSV = [lowH, lowS, lowV]
     upperHSV = [upH, upS, upV]
@@ -109,10 +115,10 @@ while (cap.isOpened()):
     res = cv2.bitwise_and(frame,frame, mask= mask)
 
     if debug:
-        cv2.imshow('re', res)
+        cv2.imshow('res', res)
 
 	
-
+    
 
     _, contours, hierarchy = cv2.findContours(mask,cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -127,9 +133,7 @@ while (cap.isOpened()):
             if area > cv2.contourArea(cnt):
                 cnt = contours[i]
                 index = i
-
-
-            
+   
 
         epsilon = 0.1*cv2.arcLength(cnt,True)
         approx = cv2.approxPolyDP(cnt,epsilon,True)
@@ -139,11 +143,17 @@ while (cap.isOpened()):
             heights = calculate_heights(1, approx)
             cv2.drawContours(mask, approx, -1, (255,255,255), 5)
 
-            distance1 =  calculate_distance(focal_length, heights[0], width)
-            distance2 =  calculate_distance(focal_length, heights[1], width)
+            distance1 =  calculate_distance(focal_length, heights[0], width,1)
+            distance2 =  calculate_distance(focal_length, heights[1], width, 1)
+            fark = abs(heights[0] - heights[1])
+            sin = fark / width
+            if sin <= 1:
+                aci = math.asin(sin)
+                adamaci = math.degrees(aci)
+                print(adamaci)
 
-            print(distance1)
-            print(distance2)
+##            print(distance1)
+##            print(distance2)
     cv2.imshow('video', mask)
 
     k = cv2.waitKey(5) & 0xFF
